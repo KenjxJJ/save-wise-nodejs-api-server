@@ -5,6 +5,7 @@ import { connectDB } from "./config/db.js";
 import { apiV1Routes } from "./routes/index.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { AppError } from "./utils/response.util.js";
+import { formatDuration } from "./utils/time.util.js";
 
 dotenv.config();
 
@@ -38,8 +39,13 @@ app.get("/", (_req, res) => {
 
 // Health check endpoint
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
+  res.json({
+    status: "ok",
+    uptime: formatDuration(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
 });
+
 
 // Mount API v1 router
 app.use("/api/v1", apiV1Routes);
