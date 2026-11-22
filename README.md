@@ -39,4 +39,4 @@ REST API for personal savings tracking and financial goal management.
 | `GET` | `/api/v1/transactions` | Get transactions list |
 | `POST` | `/api/v1/transactions` | Add a deposit/expense |
 | `DELETE` | `/api/v1/transactions/:id` | Delete a transaction |
-| `GET` | `/api/v1/summary` | Get savings summary & analytics |
+| `GET` | `/api/v1/summary` | Get savings summary & analytics |m
