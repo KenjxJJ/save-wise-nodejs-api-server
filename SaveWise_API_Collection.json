@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "savewise-api-v1-collection-id",
     "name": "SaveWise API - v1 (Node.js Express TypeScript MongoDB Atlas)",
-    "description": "Complete Postman/Thunder Client/Bruno collection for SaveWise API endpoints including Auth and User Profile modules.",
+    "description": "Complete Postman/Thunder Client/Bruno collection for SaveWise API endpoints including Auth, User Profile, and comprehensive Negative & Validation tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -28,6 +28,24 @@
       "item": [
         {
           "name": "Root Welcome",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has welcome message and endpoints\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.eql(\"Welcome to SaveWise API\");",
+                  "    pm.expect(json.endpoints).to.be.an(\"object\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -41,6 +59,25 @@
         },
         {
           "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Health status is ok with duration uptime\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(\"ok\");",
+                  "    pm.expect(json.uptime).to.be.a(\"string\");",
+                  "    pm.expect(json.timestamp).to.be.a(\"string\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -51,6 +88,37 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "[Fail] 404 Undefined Route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error message indicates resource not found\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Resource not found\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/non-existent-endpoint",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "non-existent-endpoint"]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -58,12 +126,15 @@
       "name": "Authentication",
       "item": [
         {
-          "name": "1. Register User",
+          "name": "1. Register User (Success)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
                   "if (pm.response.code === 201) {",
                   "    var res = pm.response.json();",
                   "    if (res.data && res.data.tokens) {",
@@ -98,12 +169,15 @@
           "response": []
         },
         {
-          "name": "2. Login User",
+          "name": "2. Login User (Success)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
                   "if (pm.response.code === 200) {",
                   "    var res = pm.response.json();",
                   "    if (res.data && res.data.tokens) {",
@@ -138,12 +212,15 @@
           "response": []
         },
         {
-          "name": "3. Refresh Token",
+          "name": "3. Refresh Token (Success)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
                   "if (pm.response.code === 200) {",
                   "    var res = pm.response.json();",
                   "    if (res.data && res.data.accessToken) {",
@@ -175,6 +252,254 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "[Fail] Register - Invalid Email Format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"Validation error reports invalid email\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Validation failed\");",
+                  "    var emailErr = json.errors.find(e => e.field === 'email');",
+                  "    pm.expect(emailErr).to.not.be.undefined;",
+                  "    pm.expect(emailErr.message).to.include(\"Invalid email\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-a-valid-email-format\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"Joel\",\n  \"lastName\": \"Kiggwe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Register - Weak Password (Missing Special Char/Number)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"Validation error reports password complexity requirement\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Validation failed\");",
+                  "    var pwdErr = json.errors.find(e => e.field === 'password');",
+                  "    pm.expect(pwdErr).to.not.be.undefined;",
+                  "    pm.expect(pwdErr.message).to.include(\"Password must be at least 8 characters\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"weakpwd@savewise.io\",\n  \"password\": \"weakpassword\",\n  \"firstName\": \"Joel\",\n  \"lastName\": \"Kiggwe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Register - Missing Required First & Last Name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"Validation error reports missing names\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    var fields = json.errors.map(e => e.field);",
+                  "    pm.expect(fields).to.include(\"firstName\");",
+                  "    pm.expect(fields).to.include(\"lastName\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"noname@savewise.io\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Login - Wrong Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Invalid credentials error message returned\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Invalid email or password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@savewise.io\",\n  \"password\": \"IncorrectPassword999!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Login - Unregistered Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Invalid credentials message prevents user enumeration\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Invalid email or password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"unregistered_random_user@savewise.io\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Refresh Token - Malformed / Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error indicates invalid or expired refresh token\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Invalid or expired refresh token\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"invalid.or.forged.jwt.token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh-token"]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -182,7 +507,26 @@
       "name": "User Profile",
       "item": [
         {
-          "name": "1. Get Current User (/me)",
+          "name": "1. Get Current User (/me) (Success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Profile data returned correctly\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.have.property('email');",
+                  "    pm.expect(json.data).to.have.property('profile');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -205,7 +549,25 @@
           "response": []
         },
         {
-          "name": "2. Update Profile (/me)",
+          "name": "2. Update Profile (/me) (Success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Profile updated successfully\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.profile.firstName).to.eql(\"Joel Senior\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -227,6 +589,131 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"firstName\": \"Joel Senior\",\n  \"avatarUrl\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Get Profile - Missing Authorization Header (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error prompts for Bearer token\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.include(\"Authentication required\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Get Profile - Invalid / Tampered Token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error indicates invalid or expired access token\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Invalid or expired access token\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "corrupted_or_fake_token_xyz123",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Fail] Update Profile - Invalid Avatar URL Format (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"Validation error catches invalid avatar URL\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.eql(\"Validation failed\");",
+                  "    var urlErr = json.errors.find(e => e.field === 'avatarUrl');",
+                  "    pm.expect(urlErr).to.not.be.undefined;",
+                  "    pm.expect(urlErr.message).to.include(\"Invalid avatar URL\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarUrl\": \"not-a-valid-http-url\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/me",
