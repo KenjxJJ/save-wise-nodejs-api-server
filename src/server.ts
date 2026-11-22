@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
+import { apiV1Routes } from "./routes/index.js";
+import { errorHandler } from "./middlewares/error.middleware.js";
+import { AppError } from "./utils/response.util.js";
 
 dotenv.config();
 
@@ -22,6 +25,13 @@ app.get("/", (_req, res) => {
     endpoints: {
       health: "/health",
       apiV1: "/api/v1",
+      auth: {
+        register: "POST /api/v1/auth/register",
+        login: "POST /api/v1/auth/login",
+        refreshToken: "POST /api/v1/auth/refresh-token",
+        getMe: "GET /api/v1/users/me",
+        updateProfile: "PATCH /api/v1/users/me",
+      },
     },
   });
 });
@@ -31,6 +41,16 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
 });
 
+// Mount API v1 router
+app.use("/api/v1", apiV1Routes);
+
+// Catch-all 404 for undefined routes
+app.use((_req, _res, next) => {
+  next(new AppError("Resource not found", 404));
+});
+
+// Centralized error handler
+app.use(errorHandler);
 
 // Database connection & startup
 const startServer = async () => {

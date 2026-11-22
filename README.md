@@ -28,15 +28,24 @@ REST API for personal savings tracking and financial goal management.
 
 ## API Endpoints (`/api/v1`)
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/health` | Server health & uptime check |
-| `GET` | `/api/v1/goals` | Get all savings goals |
-| `POST` | `/api/v1/goals` | Create a savings goal |
-| `GET` | `/api/v1/goals/:id` | Get single savings goal |
-| `PUT` | `/api/v1/goals/:id` | Update savings goal |
-| `DELETE` | `/api/v1/goals/:id` | Delete savings goal |
-| `GET` | `/api/v1/transactions` | Get transactions list |
-| `POST` | `/api/v1/transactions` | Add a deposit/expense |
-| `DELETE` | `/api/v1/transactions/:id` | Delete a transaction |
-| `GET` | `/api/v1/summary` | Get savings summary & analytics |m
+### Authentication & Users
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Register new user with email & password | No |
+| `POST` | `/api/v1/auth/login` | Authenticate and obtain JWT access & refresh tokens | No |
+| `POST` | `/api/v1/auth/refresh-token` | Exchange valid refresh token for a new access token | No |
+| `GET` | `/api/v1/users/me` | Fetch authenticated user profile | Yes (Bearer) |
+| `PATCH` | `/api/v1/users/me` | Update authenticated user profile | Yes (Bearer) |
+
+## Postman & API Client Testing
+
+A complete Postman v2.1 collection file is provided directly in the root directory:
+📁 **[`SaveWise_API_Collection.json`](./SaveWise_API_Collection.json)**
+
+### How to Import into Postman:
+1. Open Postman.
+2. Click **Import** (top left).
+3. Drag & drop or select `SaveWise_API_Collection.json`.
+4. The collection comes pre-configured with collection variables (`baseUrl`, `accessToken`, `refreshToken`).
+5. Running **Register** or **Login** automatically captures and sets the `accessToken` and `refreshToken` variables for subsequent protected `/me` calls.
