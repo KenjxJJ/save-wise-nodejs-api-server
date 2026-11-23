@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:api": "newman run SaveWise_API_Collection.json --env-var baseUrl=http://localhost:5000",
+    "test:api:live": "newman run SaveWise_API_Collection.json --env-var baseUrl=https://save-wise-nodejs-api-server.onrender.com"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -27,6 +29,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.6",
     "@types/swagger-ui-express": "^4.1.8",
+    "newman": "^6.2.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

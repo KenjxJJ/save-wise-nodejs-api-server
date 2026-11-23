@@ -53,17 +53,37 @@ REST API for personal savings tracking and financial goal management.
 | `GET` | `/api/v1/users/me` | Fetch authenticated user profile | Yes (Bearer) |
 | `PATCH` | `/api/v1/users/me` | Update authenticated user profile | Yes (Bearer) |
 
-## Postman & API Client Testing
+## 📖 Front-End Developer Guide & Postman Reference
+
+A comprehensive integration guide for front-end engineers (React, Next.js, Vue, mobile) is available at:
+👉 **[`POSTMAN_REFERENCE.md`](./POSTMAN_REFERENCE.md)**
+
+It includes:
+- Complete endpoint directory with exact request & response payloads.
+- JWT token refresh flow (with an Axios interceptor code snippet).
+- Standardized response envelopes and Zod validation error format (`422`).
+- Step-by-step instructions for importing and running the collection in Postman.
+
+## 🧪 Postman & Automated Newman Testing
 
 A complete Postman v2.1 collection file is provided directly in the root directory:
 📁 **[`SaveWise_API_Collection.json`](./SaveWise_API_Collection.json)**
 
-### How to Import and Test in Postman:
-1. Open Postman.
+### How to Import into Your Postman Account Workspace:
+1. Open your **Postman** desktop app (or [Postman Web](https://go.postman.co)).
 2. Click **Import** (top left).
 3. Drag & drop or select `SaveWise_API_Collection.json`.
 4. Configure the **`baseUrl`** variable in Collection Variables:
    - **Live Production:** `https://save-wise-nodejs-api-server.onrender.com`
    - **Local Development:** `http://localhost:5000`
-5. Running **Register** or **Login** automatically captures and sets the `accessToken` and `refreshToken` variables for subsequent protected `/me` calls.
+5. Running **Register** or **Login** automatically captures and sets `accessToken` and `refreshToken` variables for subsequent protected `/me` calls.
 6. The test suite includes 17 test requests covering positive flows, token refresh, and validation/negative test cases.
+
+### Run Newman Automated Test Suite via Terminal:
+```bash
+# Test against Render live deployment
+npm run test:api:live
+
+# Test against local dev server (requires npm run dev running on port 5000)
+npm run test:api
+```
