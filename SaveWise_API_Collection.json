@@ -132,8 +132,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 201 Created\", function () {",
-                  "    pm.response.to.have.status(201);",
+                  "pm.test(\"Status code is 201 Created (or 409 if already registered)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
                   "});",
                   "if (pm.response.code === 201) {",
                   "    var res = pm.response.json();",
