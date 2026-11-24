@@ -1,4 +1,4 @@
-import { UserModel, type IUser } from "../models/index.js";
+import { UserModel, OtpModel, type IUser } from "../models/index.js";
 import { hashPassword, comparePassword } from "../utils/password.util.js";
 import {
   generateAccessToken,
@@ -10,6 +10,7 @@ import type {
   RegisterInput,
   LoginInput,
   UpdateProfileInput,
+  ResetPasswordInput,
 } from "../validators/auth.validator.js";
 
 export interface SafeUser {
@@ -21,6 +22,12 @@ export interface SafeUser {
     lastName: string;
     dateOfBirth?: Date;
     avatarUrl?: string;
+  };
+  walletBalanceKobo: number;
+  settings: {
+    targetSavingsPercentage: number;
+    monthlyIncomeKobo?: number;
+    currency: string;
   };
   status: string;
   createdAt: Date;
@@ -47,6 +54,12 @@ export class AuthService {
         lastName: user.profile.lastName,
         dateOfBirth: user.profile.dateOfBirth,
         avatarUrl: user.profile.avatarUrl,
+      },
+      walletBalanceKobo: user.walletBalanceKobo ?? 0,
+      settings: {
+        targetSavingsPercentage: user.settings?.targetSavingsPercentage ?? 20,
+        monthlyIncomeKobo: user.settings?.monthlyIncomeKobo ?? 0,
+        currency: user.settings?.currency ?? "NGN",
       },
       status: user.status,
       createdAt: user.createdAt,
@@ -162,5 +175,69 @@ export class AuthService {
 
     await user.save();
     return this.sanitizeUser(user);
+  }
+
+  public static async forgotPassword(email: string): Promise<{ message: string; devOtp?: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await UserModel.findOne({ email: normalizedEmail });
+
+    // Generate 6-digit random code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = await hashPassword(code);
+
+    if (user) {
+      // Remove any existing reset OTP for this email
+      await OtpModel.deleteMany({ identifier: normalizedEmail, purpose: "PASSWORD_RESET" });
+      await OtpModel.create({
+        identifier: normalizedEmail,
+        hashedCode,
+        purpose: "PASSWORD_RESET",
+        attempts: 0,
+      });
+    }
+
+    // Generic safe response prevents email enumeration
+    return {
+      message: "If an account with that email exists, a password reset code has been sent.",
+      ...(process.env.NODE_ENV !== "production" ? { devOtp: code } : {}),
+    };
+  }
+
+  public static async resetPassword(input: ResetPasswordInput): Promise<{ message: string }> {
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const otpRecord = await OtpModel.findOne({
+      identifier: normalizedEmail,
+      purpose: "PASSWORD_RESET",
+    });
+
+    if (!otpRecord) {
+      throw new AppError("Invalid or expired reset code. Please request a new one.", 400);
+    }
+
+    if (otpRecord.attempts >= 3) {
+      await OtpModel.deleteOne({ _id: otpRecord._id });
+      throw new AppError("Too many failed attempts. Please request a new reset code.", 400);
+    }
+
+    const isValid = await comparePassword(input.otp, otpRecord.hashedCode);
+    if (!isValid) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      throw new AppError("Invalid verification code", 400);
+    }
+
+    const user = await UserModel.findOne({ email: normalizedEmail });
+    if (!user) {
+      throw new AppError("Account not found", 404);
+    }
+
+    const passwordHash = await hashPassword(input.newPassword);
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    // Consume OTP
+    await OtpModel.deleteOne({ _id: otpRecord._id });
+
+    return { message: "Password has been reset successfully. You can now log in." };
   }
 }

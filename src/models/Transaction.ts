@@ -1,12 +1,12 @@
 import { Schema, model, type Document, type Types } from "mongoose";
 
-export type TransactionType = "DEPOSIT" | "WITHDRAWAL" | "AUTO_SAVE";
+export type TransactionType = "WALLET_FUND" | "DEPOSIT" | "WITHDRAWAL" | "AUTO_SAVE";
 export type TransactionStatus = "PENDING" | "SUCCESS" | "FAILED";
 
 export interface ITransaction extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
-  goalId: Types.ObjectId;
+  goalId?: Types.ObjectId;
   type: TransactionType;
   amountKobo: number;
   currency: string;
@@ -29,12 +29,12 @@ const TransactionSchema = new Schema<ITransaction>(
     goalId: {
       type: Schema.Types.ObjectId,
       ref: "SavingsGoal",
-      required: true,
+      required: false,
       index: true,
     },
     type: {
       type: String,
-      enum: ["DEPOSIT", "WITHDRAWAL", "AUTO_SAVE"],
+      enum: ["WALLET_FUND", "DEPOSIT", "WITHDRAWAL", "AUTO_SAVE"],
       required: true,
       index: true,
     },

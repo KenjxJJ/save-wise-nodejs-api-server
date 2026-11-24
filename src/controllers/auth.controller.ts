@@ -7,6 +7,8 @@ import type {
   LoginInput,
   RefreshTokenInput,
   UpdateProfileInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
 } from "../validators/auth.validator.js";
 
 export class AuthController {
@@ -72,6 +74,32 @@ export class AuthController {
     try {
       const updatedUser = await AuthService.updateProfile(req.jwtPayload!.userId, req.body);
       sendSuccess(res, updatedUser, "Profile updated successfully", 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async forgotPassword(
+    req: Request<Record<string, never>, Record<string, never>, ForgotPasswordInput>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await AuthService.forgotPassword(req.body.email);
+      sendSuccess(res, result, result.message, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public static async resetPassword(
+    req: Request<Record<string, never>, Record<string, never>, ResetPasswordInput>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await AuthService.resetPassword(req.body);
+      sendSuccess(res, result, result.message, 200);
     } catch (error) {
       next(error);
     }

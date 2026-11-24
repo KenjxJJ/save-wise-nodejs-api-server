@@ -1,6 +1,6 @@
 import { Schema, model, type Document, type Types } from "mongoose";
 
-export type OtpPurpose = "REGISTRATION" | "LOGIN" | "WITHDRAWAL";
+export type OtpPurpose = "REGISTRATION" | "LOGIN" | "WITHDRAWAL" | "PASSWORD_RESET";
 
 export interface IOtp extends Document {
   _id: Types.ObjectId;

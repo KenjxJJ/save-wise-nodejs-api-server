@@ -1,6 +1,6 @@
 # SaveWise API — Postman Collection & Frontend Integration Reference
 
-This reference is tailored for **Front-End Engineers** (React, Next.js, Vue, React Native, Flutter, Angular) integrating with the **SaveWise REST API**. It details endpoint contracts, JWT token lifecycle strategies, request/response payloads, validation rules, and instructions for importing and running the collection directly in your Postman account workspace.
+This reference is tailored for **Front-End Engineers** (React, Next.js, Vue, React Native, Flutter, Angular) integrating with the **SaveWise REST API**. It details endpoint contracts, JWT token lifecycle strategies, request/response payloads, validation rules, savings goals, deposits, wallet balance, transaction history, the customizable 20% savings rule recommendation engine, and instructions for importing the collection into your Postman account.
 
 ---
 
@@ -31,8 +31,9 @@ The collection file is located in the root of the repository:
    **`SaveWise API - v1 (Node.js Express TypeScript MongoDB Atlas)`**
 6. Select the collection and open the **Variables** tab:
    - `baseUrl`: Set to `https://save-wise-nodejs-api-server.onrender.com` (for live) or `http://localhost:5000` (for local).
-   - `accessToken`: (Leave blank; auto-populated by Register/Login test scripts).
-   - `refreshToken`: (Leave blank; auto-populated by Register/Login test scripts).
+   - `accessToken`: (Auto-populated by Register/Login test scripts).
+   - `refreshToken`: (Auto-populated by Register/Login test scripts).
+   - `goalId`: (Auto-populated when creating a goal).
 7. *(Optional for Sharing)*: Click the three dots `...` next to the collection in Postman -> **Share** -> Share with your team or generate a public view link for fellow front-end engineers.
 
 ---
@@ -40,7 +41,7 @@ The collection file is located in the root of the repository:
 ## 🔐 Authentication & JWT Dual-Token Architecture
 
 SaveWise uses a secure dual-token authentication pattern:
-- **Access Token:** Short-lived JWT (`15m`) used to authorize protected routes (`/api/v1/users/*`). Sent in the `Authorization` header as `Bearer <token>`.
+- **Access Token:** Short-lived JWT (`15m`) used to authorize protected routes (`/api/v1/users/*`, `/api/v1/goals/*`, `/api/v1/wallet/*`). Sent in the `Authorization` header as `Bearer <token>`.
 - **Refresh Token:** Long-lived JWT (`30d`) used exclusively to obtain fresh access tokens via `POST /api/v1/auth/refresh-token`.
 
 ```mermaid
@@ -147,7 +148,6 @@ All responses from SaveWise adhere strictly to the standardized envelope.
 ```
 
 ### 3. Zod Validation Error Response (`422 Unprocessable Entity`)
-When request body validation fails, `errors` contains an array of field-level errors:
 ```json
 {
   "success": false,
@@ -164,11 +164,6 @@ When request body validation fails, `errors` contains an array of field-level er
   ]
 }
 ```
-> **Front-end Tip:** Map `errors` directly into form field helper texts:
-> ```javascript
-> const fieldErrors = {};
-> response.data.errors?.forEach(err => { fieldErrors[err.field] = err.message; });
-> ```
 
 ---
 
@@ -178,30 +173,11 @@ When request body validation fails, `errors` contains an array of field-level er
 
 #### `GET /` — Welcome & Directory
 - **Auth:** None
-- **Response `200 OK`:**
-```json
-{
-  "message": "Welcome to SaveWise API",
-  "version": "1.0.0",
-  "environment": "production",
-  "endpoints": {
-    "health": "/health",
-    "auth": "/api/v1/auth",
-    "users": "/api/v1/users"
-  }
-}
-```
+- **Response `200 OK`:** Returns API status and directory of all available endpoint paths.
 
 #### `GET /health` — Service Health & Uptime
 - **Auth:** None
-- **Response `200 OK`:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-11-23T15:55:00.000Z",
-  "uptime": "2h 15m 32s"
-}
-```
+- **Response `200 OK`:** `{"status": "ok", "uptime": "2h 15m 32s", "timestamp": "..."}`
 
 ---
 
@@ -209,13 +185,6 @@ When request body validation fails, `errors` contains an array of field-level er
 
 #### `POST /api/v1/auth/register` — User Registration
 - **Auth:** None
-- **Validation Rules:**
-  - `email`: Valid email string, trimmed, lowercase.
-  - `password`: Min 8 characters, >= 1 uppercase letter, >= 1 number, >= 1 special character (`!@#$%^&*()_+-=[]{};':"\\|,.<>/?`).
-  - `firstName`: String, 1–50 characters (required).
-  - `lastName`: String, 1–50 characters (required).
-  - `phoneNumber`: String (optional).
-  - `dateOfBirth`: ISO 8601 Date string e.g. `"1995-06-15"` (optional).
 - **Request Body:**
 ```json
 {
@@ -227,35 +196,8 @@ When request body validation fails, `errors` contains an array of field-level er
   "dateOfBirth": "1995-06-15"
 }
 ```
-- **Response `201 Created`:**
-```json
-{
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "user": {
-      "id": "6741fe7ab2c1040012e84123",
-      "email": "sarah.smith@example.com",
-      "profile": {
-        "firstName": "Sarah",
-        "lastName": "Smith",
-        "avatarUrl": ""
-      },
-      "status": "ACTIVE"
-    },
-    "tokens": {
-      "accessToken": "eyJhbGciOi...",
-      "refreshToken": "eyJhbGciOi...",
-      "expiresIn": "15m"
-    }
-  }
-}
-```
-- **Error Responses:**
-  - `409 Conflict`: `{"success": false, "message": "An account with that email already exists."}`
-  - `422 Unprocessable Entity`: Field validation failed (e.g. weak password or invalid email).
-
----
+- **Response `201 Created`:** Returns `user` object and `tokens: { accessToken, refreshToken, expiresIn }`.
+- **Errors:** `409 Conflict` (Email duplicate), `422 Unprocessable Entity` (Field validation).
 
 #### `POST /api/v1/auth/login` — User Login
 - **Auth:** None
@@ -266,145 +208,303 @@ When request body validation fails, `errors` contains an array of field-level er
   "password": "SecurePassword123!"
 }
 ```
-- **Response `200 OK`:**
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "6741fe7ab2c1040012e84123",
-      "email": "sarah.smith@example.com",
-      "profile": {
-        "firstName": "Sarah",
-        "lastName": "Smith",
-        "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-      },
-      "status": "ACTIVE"
-    },
-    "tokens": {
-      "accessToken": "eyJhbGciOi...",
-      "refreshToken": "eyJhbGciOi...",
-      "expiresIn": "15m"
-    }
-  }
-}
-```
-- **Error Responses:**
-  - `401 Unauthorized`: `{"success": false, "message": "Invalid email or password"}` (prevents user enumeration).
-
----
+- **Response `200 OK`:** Returns `user` object and `tokens`.
+- **Errors:** `401 Unauthorized` (Wrong email/password).
 
 #### `POST /api/v1/auth/refresh-token` — Token Rotation
-- **Auth:** None (passes refreshToken in body)
+- **Auth:** None
+- **Request Body:** `{"refreshToken": "eyJhbGciOi..."}`
+- **Response `200 OK`:** `{"data": {"accessToken": "...", "expiresIn": "15m"}}`
+
+#### `POST /api/v1/auth/forgot-password` — Request Reset Code
+- **Auth:** None
 - **Request Body:**
 ```json
 {
-  "refreshToken": "eyJhbGciOi..."
+  "email": "sarah.smith@example.com"
 }
 ```
 - **Response `200 OK`:**
 ```json
 {
   "success": true,
-  "message": "Token refreshed successfully",
+  "message": "If an account with that email exists, a password reset code has been sent.",
   "data": {
-    "accessToken": "eyJhbGciOi...",
-    "expiresIn": "15m"
+    "message": "If an account with that email exists, a password reset code has been sent.",
+    "devOtp": "648192"
   }
 }
 ```
-- **Error Responses:**
-  - `401 Unauthorized`: `{"success": false, "message": "Invalid or expired refresh token"}`
+
+#### `POST /api/v1/auth/reset-password` — Verify Code & Reset Password
+- **Auth:** None
+- **Request Body:**
+```json
+{
+  "email": "sarah.smith@example.com",
+  "otp": "648192",
+  "newPassword": "NewSecurePassword123!"
+}
+```
+- **Response `200 OK`:** `{"success": true, "message": "Password has been reset successfully. You can now log in."}`
+- **Errors:** `400 Bad Request` (Invalid/expired OTP, or $\ge 3$ failed attempts).
 
 ---
 
 ### 3. User Profile (`/api/v1/users`)
 
-#### `GET /api/v1/users/me` — Get Current Authenticated Profile
+#### `GET /api/v1/users/me` — Current Profile
 - **Auth:** `Bearer <accessToken>`
-- **Headers:** `Authorization: Bearer {{accessToken}}`
-- **Response `200 OK`:**
-```json
-{
-  "success": true,
-  "message": "User profile retrieved successfully",
-  "data": {
-    "id": "6741fe7ab2c1040012e84123",
-    "email": "sarah.smith@example.com",
-    "phoneNumber": "+254712345678",
-    "profile": {
-      "firstName": "Sarah",
-      "lastName": "Smith",
-      "dateOfBirth": "1995-06-15T00:00:00.000Z",
-      "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-    },
-    "status": "ACTIVE",
-    "createdAt": "2026-11-23T15:20:00.000Z",
-    "updatedAt": "2026-11-23T15:40:00.000Z"
-  }
-}
-```
-- **Error Responses:**
-  - `401 Unauthorized`: `{"success": false, "message": "Access denied. No token provided. Include Authorization: Bearer <token>"}`
-  - `401 Unauthorized`: `{"success": false, "message": "Invalid or expired access token"}`
+- **Response `200 OK`:** Returns user profile, status, `walletBalanceKobo`, and settings.
+
+#### `PATCH /api/v1/users/me` — Update Profile
+- **Auth:** `Bearer <accessToken>`
+- **Request Body (all optional):** `{"firstName": "Sarah", "lastName": "Jenkins", "avatarUrl": "https://..."}`
 
 ---
 
-#### `PATCH /api/v1/users/me` — Update User Profile
+### 4. Savings Goals (`/api/v1/goals`)
+
+#### `POST /api/v1/goals` — Create Savings Goal
 - **Auth:** `Bearer <accessToken>`
-- **Headers:** `Authorization: Bearer {{accessToken}}`
-- **Request Body (All fields optional):**
+- **Request Body:**
 ```json
 {
-  "firstName": "Sarah",
-  "lastName": "Jenkins",
-  "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
-  "phoneNumber": "+254700987654"
+  "name": "Emergency Fund 2027",
+  "targetAmountKobo": 50000000,
+  "currency": "NGN",
+  "targetDate": "2027-12-31T00:00:00.000Z",
+  "autoSave": {
+    "enabled": true,
+    "amountKobo": 500000,
+    "frequency": "MONTHLY"
+  }
 }
 ```
-- **Validation Rules:**
-  - `avatarUrl`: Valid URL format or empty string `""`.
-  - `firstName` / `lastName`: 1–50 characters if provided.
+- **Response `201 Created`:**
+```json
+{
+  "success": true,
+  "message": "Savings goal created successfully",
+  "data": {
+    "id": "6742a1b9e830...",
+    "name": "Emergency Fund 2027",
+    "targetAmountKobo": 50000000,
+    "currentBalanceKobo": 0,
+    "currency": "NGN",
+    "targetDate": "2027-12-31T00:00:00.000Z",
+    "status": "ACTIVE",
+    "progressPercentage": 0,
+    "autoSave": {
+      "enabled": true,
+      "amountKobo": 500000,
+      "frequency": "MONTHLY"
+    },
+    "createdAt": "2026-11-24T09:40:00.000Z"
+  }
+}
+```
+
+#### `GET /api/v1/goals` — List All User Goals
+- **Auth:** `Bearer <accessToken>`
+- **Optional Query:** `?status=ACTIVE` (`ACTIVE` | `COMPLETED` | `CANCELLED`)
 - **Response `200 OK`:**
 ```json
 {
   "success": true,
-  "message": "Profile updated successfully",
+  "message": "Savings goals retrieved successfully",
   "data": {
-    "id": "6741fe7ab2c1040012e84123",
-    "email": "sarah.smith@example.com",
-    "phoneNumber": "+254700987654",
-    "profile": {
-      "firstName": "Sarah",
-      "lastName": "Jenkins",
-      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
-    },
-    "status": "ACTIVE",
-    "updatedAt": "2026-11-23T15:42:15.000Z"
+    "goals": [ ... ],
+    "totalSavingsKobo": 12500000,
+    "count": 3
   }
 }
 ```
-- **Error Responses:**
-  - `422 Unprocessable Entity`: `{"success": false, "message": "Validation failed", "errors": [{"field": "avatarUrl", "message": "Invalid avatar URL"}]}`
+
+#### `GET /api/v1/goals/:id` — Get Goal Details
+- **Auth:** `Bearer <accessToken>`
+- **Response `200 OK`:** Single goal object with live progress percentage.
+
+#### `PATCH /api/v1/goals/:id` — Update Goal
+- **Auth:** `Bearer <accessToken>`
+- **Request Body (all optional):** `{"name": "Emergency Fund Updated", "targetAmountKobo": 60000000, "status": "ACTIVE"}`
+
+#### `DELETE /api/v1/goals/:id` — Delete / Cancel Goal
+- **Auth:** `Bearer <accessToken>`
+- **Response `200 OK`:** Goal deleted. Any remaining balance is automatically refunded back to the user's wallet!
+
+#### `POST /api/v1/goals/:id/deposit` — Deposit into Goal
+- **Auth:** `Bearer <accessToken>`
+- **Request Body:**
+```json
+{
+  "amountKobo": 250000,
+  "source": "WALLET",
+  "reason": "Weekly savings deposit"
+}
+```
+- *(Note: `source` can be `"WALLET"` or `"SIMULATED_CARD"`. If `"WALLET"`, funds are validated and deducted from `walletBalanceKobo`).*
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Deposit to savings goal successful",
+  "data": {
+    "goal": {
+      "id": "6742a1b9e830...",
+      "currentBalanceKobo": 250000,
+      "progressPercentage": 5,
+      "status": "ACTIVE"
+    },
+    "transaction": {
+      "id": "...",
+      "reference": "DEP_1732441200_A9B2",
+      "amountKobo": 250000,
+      "type": "DEPOSIT",
+      "status": "SUCCESS"
+    }
+  }
+}
+```
+
+---
+
+### 5. Wallet, Transactions & 20% Recommendation Engine (`/api/v1/wallet`)
+
+#### `GET /api/v1/wallet` — Wallet & Net Worth Summary
+- **Auth:** `Bearer <accessToken>`
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Wallet summary retrieved successfully",
+  "data": {
+    "walletBalanceKobo": 5000000,
+    "totalSavingsKobo": 250000,
+    "netWorthKobo": 5250000,
+    "activeGoalsCount": 1,
+    "currency": "NGN",
+    "settings": {
+      "targetSavingsPercentage": 20,
+      "monthlyIncomeKobo": 20000000,
+      "currency": "NGN"
+    }
+  }
+}
+```
+
+#### `POST /api/v1/wallet/deposit` — Fund Wallet
+- **Auth:** `Bearer <accessToken>`
+- **Request Body:**
+```json
+{
+  "amountKobo": 5000000,
+  "paymentMethod": "CARD",
+  "reason": "Wallet top-up"
+}
+```
+- **Response `200 OK`:** Returns updated `walletBalanceKobo` and transaction receipt.
+
+#### `PATCH /api/v1/wallet/settings` — Readjust Savings Target Percentage
+Allows the user to adjust the default 20% savings rule to any preferred target (e.g. 15%, 25%, 30%), set monthly income, and configure currency.
+- **Auth:** `Bearer <accessToken>`
+- **Request Body:**
+```json
+{
+  "targetSavingsPercentage": 25,
+  "monthlyIncomeKobo": 25000000,
+  "currency": "NGN"
+}
+```
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Savings settings updated. Target set to 25%.",
+  "data": {
+    "settings": {
+      "targetSavingsPercentage": 25,
+      "monthlyIncomeKobo": 25000000,
+      "currency": "NGN"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/wallet/recommendation` — Dynamic Savings Recommendation
+Evaluates the user's savings performance against their customizable savings rule (defaulting to the classic 20% rule, dynamically adjusted if user updated their settings):
+- **Auth:** `Bearer <accessToken>`
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Savings recommendation retrieved successfully",
+  "data": {
+    "rule": "25% Savings Rule",
+    "targetSavingsPercentage": 25,
+    "monthlyIncomeKobo": 25000000,
+    "recommendedMonthlySavingsKobo": 6250000,
+    "recommendedWeeklySavingsKobo": 1562500,
+    "recommendedDailySavingsKobo": 208333,
+    "actualSavedLast30DaysKobo": 2500000,
+    "progressRatePercentage": 40,
+    "onTrack": false,
+    "advice": "Based on your configured 25% target and monthly income of 250,000 NGN, we recommend setting aside 62,500 NGN each month. You can readjust this percentage anytime in /api/v1/wallet/settings."
+  }
+}
+```
+
+#### `GET /api/v1/wallet/transactions` — Transaction History
+- **Auth:** `Bearer <accessToken>`
+- **Optional Queries:** `?page=1&limit=20&type=DEPOSIT` (`WALLET_FUND` | `DEPOSIT` | `WITHDRAWAL` | `AUTO_SAVE`)
+- **Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Transaction history retrieved successfully",
+  "data": {
+    "transactions": [
+      {
+        "id": "6742a5c102...",
+        "reference": "DEP_1732441200_A9B2",
+        "type": "DEPOSIT",
+        "amountKobo": 250000,
+        "currency": "NGN",
+        "status": "SUCCESS",
+        "reason": "Weekly savings deposit",
+        "goal": {
+          "id": "6742a1b9e830...",
+          "name": "Emergency Fund 2027"
+        },
+        "createdAt": "2026-11-24T09:45:00.000Z"
+      }
+    ],
+    "pagination": {
+      "total": 1,
+      "page": 1,
+      "limit": 20,
+      "totalPages": 1
+    }
+  }
+}
+```
 
 ---
 
 ## 🧪 Postman Automated Test Suite & Newman CLI
 
-The collection includes **17 automated test requests** (covering positive flows, token synchronization, and comprehensive negative/validation checks):
+The collection now includes **29 automated test requests** covering:
+- ✅ **System:** Welcome root route & health check uptime string format
+- ✅ **Authentication:** Registration, Login, Token Refresh, Forgot Password OTP request, Reset Password verification
+- ✅ **Negative Validation:** Email regex (422), Password complexity (422), Missing names (422), Invalid credentials (401), Tampered Bearer token (401)
+- ✅ **User Profile:** Get Current User (`/me`), Update Profile (`PATCH /me`)
+- ✅ **Savings Goals:** Create Goal (201), List Goals (200), Get Goal by ID (200), Update Goal (200), Deposit into Goal (200)
+- ✅ **Wallet & Recommendations:** Get Wallet Summary (200), Fund Wallet (200), Readjust Target Percentage (200), Get Dynamic Recommendation (200), Paginated Transaction History (200)
 
 ```bash
-# Run against Live Deployment on Render (17 tests, 31 assertions)
-npx newman run SaveWise_API_Collection.json --env-var "baseUrl=https://save-wise-nodejs-api-server.onrender.com"
+# Run locally (starts server with dev and runs newman)
+npm run test:api
 
-# Run locally against development server
-npx newman run SaveWise_API_Collection.json --env-var "baseUrl=http://localhost:5000"
+# Run against Render live deployment (once pushed)
+npm run test:api:live
 ```
-
-### Test Coverage Summary:
-- ✅ **System:** Welcome root route & health check uptime string format
-- ✅ **Authentication:** Registration (201/409 duplicate check), Login (200 + token extraction), Refresh Token (200 + accessToken rotation)
-- ✅ **Negative Validation:** Invalid email format (422), Weak password regex (422), Missing names (422), Invalid credentials (401), Unregistered email (401), Malformed refresh token (401)
-- ✅ **User Profile:** Get Current User (`/me`), Update Profile (`PATCH /me`)
-- ✅ **Security / Protected Route Checks:** Missing Bearer header (401), Tampered token (401), Invalid avatar URL (422)
